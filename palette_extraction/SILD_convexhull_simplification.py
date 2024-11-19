@@ -13,7 +13,7 @@ import sys
     
 from trimesh import TriMesh
 
-def get_hull_vertices_faces(hull):
+def get_hull_vertices_faces(hull, normalized = False):
 
     hvertices = hull.points[hull.vertices]
     points_index = -1 * np.ones(hull.points.shape[0], dtype=np.int32)  # Using int32 instead of default int
@@ -29,6 +29,9 @@ def get_hull_vertices_faces(hull):
     flip_mask = dots < 0
     hfaces[flip_mask, :2] = hfaces[flip_mask, :2][:, ::-1]
 
+    if normalized:
+        hvertices /= 255
+
     return hvertices, hfaces
 
 def convert_convexhull_to_trimesh(hull):
@@ -40,8 +43,7 @@ def convert_convexhull_to_trimesh(hull):
 
 def write_convexhull_into_obj_file(hull, output_rawhull_obj_file):
 
-    hvertices, hfaces = get_hull_vertices_faces(hull)
-    hvertices /= 255
+    hvertices, hfaces = get_hull_vertices_faces(hull, normalized=True)
             
     myfile=open(output_rawhull_obj_file,'w')
     for index in range(hvertices.shape[0]):
@@ -277,8 +279,8 @@ def get_simplified_hull(image, E_vertice_num = 4, N = 500):
 
     return newhull
 
-def get_simplified_hull_vertices_faces(image, E_vertice_num = 4, N = 500):
-    return get_hull_vertices_faces(get_simplified_hull(image, E_vertice_num, N))
+def get_simplified_hull_vertices_faces(image, E_vertice_num = 4, N = 500, normalized = True):
+    return get_hull_vertices_faces(get_simplified_hull(image, E_vertice_num, N), normalized)
 
 if __name__=="__main__":
 
