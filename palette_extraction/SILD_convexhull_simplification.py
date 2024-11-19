@@ -13,17 +13,14 @@ import sys
     
 from trimesh import TriMesh
 
-def convert_convexhull_to_trimesh(hull):
+def get_hull_vertices_faces(hull):
 
-    result = TriMesh()
-    result.vs = hull.points[hull.vertices]
-
+    hvertices = hull.points[hull.vertices]
     points_index = -1 * np.ones(hull.points.shape[0], dtype=np.int32)  # Using int32 instead of default int
     points_index[hull.vertices] = np.arange(len(hull.vertices))
     
-
     hfaces = points_index[hull.simplices]
-    vertices = result.vs[hfaces]
+    vertices = hvertices[hfaces]
     edges1 = vertices[:, 1] - vertices[:, 0]
     edges2 = vertices[:, 2] - vertices[:, 0]
     face_normals = np.cross(edges1, edges2)
@@ -31,28 +28,20 @@ def convert_convexhull_to_trimesh(hull):
     dots = np.sum(hull.equations[:, :3] * face_normals, axis=1)
     flip_mask = dots < 0
     hfaces[flip_mask, :2] = hfaces[flip_mask, :2][:, ::-1]
-    result.faces = hfaces
-    
+
+    return hvertices, hfaces
+
+def convert_convexhull_to_trimesh(hull):
+    result = TriMesh()
+    hvertices, hfaces = get_hull_vertices_faces(hull)
+    result.vs = hvertices
+    result.faces = hfaces    
     return result
 
 def write_convexhull_into_obj_file(hull, output_rawhull_obj_file):
-    hvertices=hull.points[hull.vertices]
-    points_index=-1*np.ones(hull.points.shape[0],dtype=int)
-    points_index[hull.vertices]=np.arange(len(hull.vertices))
-    
-    hfaces=np.array([points_index[hface] for hface in hull.simplices])+1
-    
-    #### to make sure each faces's points are countclockwise order.
-    for index in range(len(hfaces)):
-        face=hvertices[hfaces[index]-1]
-        normals=hull.equations[index,:3]
-        p0=face[0]
-        p1=face[1]
-        p2=face[2]
-        
-        n=np.cross(p1-p0,p2-p0)
-        if np.dot(normals,n)<0:
-            hfaces[index][[1,0]]=hfaces[index][[0,1]]
+
+    hvertices, hfaces = get_hull_vertices_faces(hull)
+    hvertices /= 255
             
     myfile=open(output_rawhull_obj_file,'w')
     for index in range(hvertices.shape[0]):
@@ -288,6 +277,9 @@ def get_simplified_hull(image, E_vertice_num = 4, N = 500):
 
     return newhull
 
+def get_simplified_hull_vertices_faces(image, E_vertice_num = 4, N = 500):
+    return get_hull_vertices_faces(get_simplified_hull(image, E_vertice_num, N))
+
 if __name__=="__main__":
 
     input_image_path=sys.argv[1]
@@ -298,7 +290,7 @@ if __name__=="__main__":
     from time import process_time as clock
     
     start_time=clock()
-    hull=get_simplified_hull(images)
+    hull=get_simplified_hull(images, E_vertice_num=6)
     end_time=clock()
 
     write_convexhull_into_obj_file(hull, output_rawhull_obj_file)
