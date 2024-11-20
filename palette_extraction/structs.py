@@ -121,59 +121,35 @@ class Mesh:
                 count += 1
         return count % 2 == 1
 
-
-def is_inside_batch(triangles, points):
-    points = np.asarray(points)
-    n = len(points)
-
-    tri_norms = np.array([t.norm for t in triangles])
-    tri_ds = np.array([t.d for t in triangles])
-    tri_vertices = np.array([[t.a, t.b, t.c] for t in triangles])
-
-    ray_dir = np.array([1, 0, 1])
-
-    # for each triangle create list - 1 if t.intersection_parameter(r) > 0 otherwise 0
-    eps = 1e-8
-    dot_prods = np.dot(tri_norms, ray_dir)
-    intersections = np.zeros(n, dtype=int)
-    valid_tris = np.abs(dot_prods) >= eps
-
-    batch_size = 1000
-    for start in range(0, n, batch_size):
-        end = min(start + batch_size, n)
-        batch = points[start:end]
-
-        origin_dots = np.dot(batch, tri_norms.T).T
-        t = -(tri_ds + origin_dots) / (dot_prods + eps)
-        valid_t = (t > eps) & valid_tris
-
+    def is_inside_batch(self, triangles, points):
+        ray_dir = np.array([1, 0, 1])
+        count = np.zeros((len(points)))
         for i in range(len(triangles)):
-            if not valid_tris[i]:
+            tri = triangles[i]
+
+            eps = 1e-8
+            dot_product = np.dot(tri.norm, ray_dir)
+            if np.abs(dot_product) < eps:
                 continue
 
-            valid_ind = np.where(valid_t[:, i])[0]
-            if len(valid_ind) == 0:
-                continue
+            t = -(tri.d + np.dot(tri.norm, points.T)) / (dot_product + eps)
+            new_points = points + t[:, np.newaxis] * ray_dir
+            res = np.array([True for _ in range(len(new_points))])
+            sides = np.array([tri.a, tri.b, tri.c])
+            for _ in range(3):
+                a = sides[0]
+                b = sides[1]
+                c = sides[2]
+                ab = b - a
+                ac = c - a
+                ap = new_points - a
+                v1 = np.cross(ab, ac)
+                v2 = np.cross(ab, ap)
+                res = np.logical_and(res, (np.dot(v2, v1) >= 0))
 
-            intersection_points = batch[valid_ind] + t[valid_ind, i : i + 1] * ray_dir
-            v0 = tri_vertices[i, 1] - tri_vertices[i, 0]
-            v1 = tri_vertices[i, 2] - tri_vertices[i, 0]
-            v2 = intersection_points - tri_vertices[i, 0]
-
-            dot00 = np.dot(v0, v0)
-            dot01 = np.dot(v0, v1)
-            dot11 = np.dot(v1, v1)
-            dot20 = np.dot(v2, v0.T)
-            dot21 = np.dot(v2, v1.T)
-
-            denom = dot00 * dot11 - dot01 * dot01
-            u = (dot11 * dot20 - dot01 * dot21) / denom
-            v = (dot00 * dot21 - dot01 * dot20) / denom
-
-            in_tri = (u >= 0) & (v >= 0) & (u + v <= 1)
-            intersections[start:end][valid_ind[in_tri]] += 1
-
-    return intersections % 2 == 1
+                sides = np.roll(sides, 1)
+            count += (np.logical_and(t > eps, np.logical_and(res, t > 0))).astype(int)
+        return count % 2 == 1
 
 
 class PointDist:

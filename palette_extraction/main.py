@@ -56,12 +56,11 @@ def compute_center_points_unique(
 
 def compute_outside_points(mesh: Mesh, points):
     triangles = mesh.construct_triangles()
-    print("construct triangles done")
-    # is_inside = [mesh.is_inside(triangles, pt) for pt in points]
-    is_inside = is_inside_batch(triangles, points)
-    print("is inside calcualted for all triangles")
-    inside_points = [points[i] for i in range(len(points)) if is_inside[i]]
-    outside_points = [points[i] for i in range(len(points)) if not is_inside[i]]
+    is_inside = mesh.is_inside_batch(triangles, points)
+    inside_points = np.array([points[i] for i in range(len(points)) if is_inside[i]])
+    outside_points = np.array(
+        [points[i] for i in range(len(points)) if not is_inside[i]]
+    )
     return inside_points, outside_points
 
 
@@ -117,7 +116,6 @@ def compute_loss_function(
 
 
 def cost_function(x, data: Data) -> float:
-    print("cost function for x = ", x)
     target_dist = x[0]
     target_point = (1 - target_dist) * data.center_point[
         data.index
@@ -127,7 +125,6 @@ def cost_function(x, data: Data) -> float:
     new_mesh.vertices[data.index] = target_point
 
     inside_points, outside_points = compute_outside_points(new_mesh, data.points)
-    print("got outside points")
     num_nearest_neighbours = data.num_nearest_neighbours
     center_points = data.center_point
 
@@ -151,7 +148,6 @@ def cost_function(x, data: Data) -> float:
             center_points[data.index] = compute_specific_center_point(
                 new_mesh, data.points, num_nearest_neighbours, data.index
             )
-    print("got center point")
 
     result = compute_loss_function_base(
         new_mesh,
@@ -160,7 +156,6 @@ def cost_function(x, data: Data) -> float:
         num_nearest_neighbours,
         data.lambda_fac,
     )
-    print("got loss function base")
     return result.total_error
 
 
@@ -229,8 +224,9 @@ if __name__ == "__main__":
     )
     refined_palette = mesh
 
-    for _ in range(iterations):
+    for z in range(iterations):
         for i in range(mesh.vertex_num()):
+            print(z, i)
             # calculate v_c for each v
             if unique == 1:
                 center_points = compute_center_points_unique(
@@ -252,16 +248,13 @@ if __name__ == "__main__":
                 unique,
             )
 
-            print("generated Data, will calculate costs for different ks")
-
             ks = np.arange(-0.5, 1.0, 0.3)
-            # cost = np.array([cost_function([k], [k], data) for k in ks])
             cost = np.array([cost_function([k], data) for k in ks])
             mincost_idx = np.argmin(cost)
             minval = cost[mincost_idx]
             initial_guess = ks[mincost_idx]
 
-            print("reached before optimize")
+            print("before opt")
             x0 = np.array([initial_guess])
             bounds = [(0, 1)]
             res = minimize(
@@ -272,4 +265,10 @@ if __name__ == "__main__":
                 bounds=bounds,
                 tol=1e-4,
             )
-            print(res)
+            print("after opt")
+            refined_palette.vertices[data.index] = (1 - res.x) * data.center_point[
+                data.index
+            ] + x * data.mesh.vertices[data.index]
+            print(refined_palette)
+
+    print(refined_palette)
