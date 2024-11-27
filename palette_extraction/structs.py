@@ -123,6 +123,7 @@ class Mesh:
 
     def is_inside_batch(self, triangles, points):
         ray_dir = np.array([1, 0, 1])
+        ray_dir = ray_dir / np.linalg.norm(ray_dir)
         count = np.zeros((len(points)))
         for i in range(len(triangles)):
             tri = triangles[i]
@@ -147,7 +148,7 @@ class Mesh:
                 v2 = np.cross(ab, ap)
                 res = np.logical_and(res, (np.dot(v2, v1) >= 0))
 
-                sides = np.roll(sides, 1)
+                sides = np.roll(sides, 1, axis=0)
             count += (np.logical_and(t > eps, np.logical_and(res, t > 0))).astype(int)
         return count % 2 == 1
 

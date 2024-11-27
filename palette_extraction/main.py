@@ -116,14 +116,28 @@ def compute_loss_function(
 
 
 def cost_function(x, data: Data) -> float:
+    # x - current k to be considered
+    # data - 
+    # list of v_c (center_point)
+    # index of v to be changes (index)
+    # mesh
+    # points
+    # lambda
+    # M used to calculate v_c (num_nearest_neighbours)
+    # center_point_option - 1 (use only inside points) or 0 (use all points)
+    # unique - 1 (make set of neighbours disjoint) or 0 (not)
+    
+    # calculate new point with current k
     target_dist = x[0]
     target_point = (1 - target_dist) * data.center_point[
         data.index
     ] + target_dist * data.mesh.vertices[data.index]
 
+    # adjust the mesh with new point
     new_mesh = data.mesh
     new_mesh.vertices[data.index] = target_point
 
+    # calculate the center points wrt new mesh
     inside_points, outside_points = compute_outside_points(new_mesh, data.points)
     num_nearest_neighbours = data.num_nearest_neighbours
     center_points = data.center_point
@@ -149,11 +163,12 @@ def cost_function(x, data: Data) -> float:
                 new_mesh, data.points, num_nearest_neighbours, data.index
             )
 
+    # compute loss based on new mesh
     result = compute_loss_function_base(
         new_mesh,
         outside_points,
         len(data.points),
-        num_nearest_neighbours,
+        center_points,
         data.lambda_fac,
     )
     return result.total_error
@@ -248,13 +263,13 @@ if __name__ == "__main__":
                 unique,
             )
 
-            ks = np.arange(-0.5, 1.0, 0.3)
+            ks = np.arange(0.0, 1.0, 0.1)
             cost = np.array([cost_function([k], data) for k in ks])
             mincost_idx = np.argmin(cost)
             minval = cost[mincost_idx]
             initial_guess = ks[mincost_idx]
 
-            print("before opt")
+            a = time.time()
             x0 = np.array([initial_guess])
             bounds = [(0, 1)]
             res = minimize(
@@ -265,10 +280,9 @@ if __name__ == "__main__":
                 bounds=bounds,
                 tol=1e-4,
             )
-            print("after opt")
+            # print(time.time() - a)
             refined_palette.vertices[data.index] = (1 - res.x) * data.center_point[
                 data.index
-            ] + x * data.mesh.vertices[data.index]
-            print(refined_palette)
+            ] + res.x * data.mesh.vertices[data.index]
 
-    print(refined_palette)
+    refined_palette.save_to_file("./refined_palette.obj")
