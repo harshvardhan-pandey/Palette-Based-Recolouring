@@ -20,7 +20,7 @@ def get_mean_value_coordinates(points, vertices, triangles, epsilon=1e-8):
 
     # Compute distances from points to vertices
     projections = ProjectionHandler(vertices)
-    points = projections.project_points(points)
+    points = projections.project_points(points, BLOCK_LENGTH=100)
     point_vertex_distances = np.linalg.norm(
         points[:, np.newaxis, :] - vertices[np.newaxis, :, :], 
         axis=2
