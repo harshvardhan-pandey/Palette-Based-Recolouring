@@ -67,6 +67,12 @@ class Mesh:
 
     def face_num(self) -> int:
         return self.faces.shape[0]
+    
+    def copy(self):
+        new_mesh = Mesh()
+        new_mesh.vertices = self.vertices.copy()
+        new_mesh.faces = self.faces.copy()
+        return new_mesh
 
     def load_from_file(self, filename: str) -> bool:
         self.clear()

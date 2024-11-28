@@ -9,6 +9,7 @@ from structs import *
 def compute_specific_center_point(
     mesh: Mesh, inside_points, num_nearest_neighbour: int, vertex_index: int
 ):
+    # print("len of inside ", len(inside_points))
     vertex = mesh.vertices[vertex_index]
     dist = np.linalg.norm(inside_points - vertex, axis=1)
     idx = np.argsort(dist)[:num_nearest_neighbour]
@@ -78,7 +79,12 @@ def outside_points_distance(mesh: Mesh, outside_points) -> float:
 def compute_loss_function_base(
     mesh: Mesh, outside_points, num_total_points, center_nn_points, lambda_fac
 ):
-    reconstruct_error = outside_points_distance(mesh, outside_points) / num_total_points
+    if len(outside_points) == 0:
+        reconstruct_error = 0.0
+    else:
+        reconstruct_error = (
+            outside_points_distance(mesh, outside_points) / num_total_points
+        )
     represent_error = np.sum(np.linalg.norm(mesh.vertices - center_nn_points, axis=1))
     represent_error /= mesh.vertex_num()
     total_error = reconstruct_error * lambda_fac + represent_error
@@ -117,7 +123,7 @@ def compute_loss_function(
 
 def cost_function(x, data: Data) -> float:
     # x - current k to be considered
-    # data - 
+    # data -
     # list of v_c (center_point)
     # index of v to be changes (index)
     # mesh
@@ -126,21 +132,26 @@ def cost_function(x, data: Data) -> float:
     # M used to calculate v_c (num_nearest_neighbours)
     # center_point_option - 1 (use only inside points) or 0 (use all points)
     # unique - 1 (make set of neighbours disjoint) or 0 (not)
-    
+
     # calculate new point with current k
     target_dist = x[0]
     target_point = (1 - target_dist) * data.center_point[
         data.index
     ] + target_dist * data.mesh.vertices[data.index]
 
+    # print("k: ", target_dist)
+    # print("ori c pt: ", data.center_point[data.index])
+    # print("ori m pt: ", data.mesh.vertices[data.index])
+    # print("k pt: ", target_point)
+
     # adjust the mesh with new point
-    new_mesh = data.mesh
+    new_mesh = data.mesh.copy()
     new_mesh.vertices[data.index] = target_point
 
     # calculate the center points wrt new mesh
     inside_points, outside_points = compute_outside_points(new_mesh, data.points)
     num_nearest_neighbours = data.num_nearest_neighbours
-    center_points = data.center_point
+    center_points = data.center_point.copy()
 
     if data.unique == 1:
         if data.center_point_option == 1:
@@ -171,6 +182,7 @@ def cost_function(x, data: Data) -> float:
         center_points,
         data.lambda_fac,
     )
+
     return result.total_error
 
 
@@ -239,9 +251,10 @@ if __name__ == "__main__":
     )
     refined_palette = mesh
 
+    t_start = time.time()
     for z in range(iterations):
         for i in range(mesh.vertex_num()):
-            print(z, i)
+            # print(z, i)
             # calculate v_c for each v
             if unique == 1:
                 center_points = compute_center_points_unique(
@@ -269,9 +282,13 @@ if __name__ == "__main__":
             minval = cost[mincost_idx]
             initial_guess = ks[mincost_idx]
 
-            a = time.time()
+            # print(ks)
+            # print(cost)
+
             x0 = np.array([initial_guess])
             bounds = [(0, 1)]
+
+            # print("optimize start")
             res = minimize(
                 cost_function,
                 x0,
@@ -280,9 +297,17 @@ if __name__ == "__main__":
                 bounds=bounds,
                 tol=1e-4,
             )
-            # print(time.time() - a)
             refined_palette.vertices[data.index] = (1 - res.x) * data.center_point[
                 data.index
             ] + res.x * data.mesh.vertices[data.index]
+            
+    t_end = time.time()
+    print("time taken: ", t_end - t_start)
 
     refined_palette.save_to_file("./refined_palette.obj")
+    
+    final_res = compute_loss_function(refined_palette, points, lambda_fac, num_nearest_neighbours, center_point_option, unique)
+    print("total loss: ", final_res.total_error)
+    print("lambda: ", final_res.lambda_fac)
+    print("reconstruct loss: ", final_res.reconstruct_error)
+    print("representative error/sparse loss: ", final_res.represent_error)
