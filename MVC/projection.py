@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.spatial import ConvexHull, KDTree, Delaunay
 from scipy.optimize import minimize
+from joblib import Parallel, delayed
 
 class ProjectionHandler:
     
@@ -26,53 +27,58 @@ class ProjectionHandler:
                 lambda x, y=query_point: np.sum((x - y)**2),
                 x0=self.points[nearest_idx],
                 constraints=self.constraints,
-                hess=lambda x: 2 * np.eye(x.shape[0]),
-                tol = 1e-9,
-                method="trust-constr"
+                method="SLSQP"
             )
         
         return result.x
+    
+    def project_points(self, query_points):
 
-    def project_points(self, query_points, BLOCK_LENGTH = 30):
-        
         inside_hull = self.tri.find_simplex(query_points) >= 0
-        projections = query_points.copy()
-
         if np.all(inside_hull):
-            return projections 
+            return query_points.copy()
         
         outside_points = query_points[~inside_hull]
-        outside_projections = outside_points.copy()
+        outside_projections = np.array([
+            self.project_point(point) for point in outside_points
+        ])
+        
+        projections = query_points.copy()
+        projections[~inside_hull] = outside_projections
+        
+        return projections
+    
+    def project_points_parallel(self, query_points, n_jobs=-1):
+
+        
+        inside_hull = self.tri.find_simplex(query_points) >= 0
+        if np.all(inside_hull):
+            return query_points.copy()
+        
+        outside_points = query_points[~inside_hull]
         _, nearest_indices = self.tree.query(outside_points)
         nearest_vertices = self.points[nearest_indices]
-
-        N = nearest_vertices.shape[0]
-        for block_start in range(0, N, BLOCK_LENGTH):
-
-            block_end = min(block_start + BLOCK_LENGTH, N)
-            actual_block_size = block_end - block_start
-            outside_points_block = outside_points[block_start: block_end].flatten()
-            nearest_vertices_block = nearest_vertices[block_start: block_end, :].flatten()
-
-            A = np.kron(np.eye(actual_block_size), self.A)
-            b = np.tile(self.b, actual_block_size)
-            constraints = [{'type': 'ineq', 'fun': lambda x: - b - np.dot(A, x)}]
-
+        
+        def project_single_point(point, vertex):
+            # Implement your specific projection logic here
+            # This is a simplified example
             result = minimize(
-                lambda x: np.sum((x - outside_points_block)**2),
-                x0=nearest_vertices_block,
-                constraints=constraints,
-                hess=lambda x: 2 * np.eye(x.shape[0]),
-                tol = 1e-9,
-                method="trust-constr"
+                lambda x: np.sum((x - point)**2),
+                x0=vertex,
+                constraints=self.constraints,  # Add your specific constraints
+                method='SLSQP'
             )
-
-            block_result = result.x
-            length = block_result.shape[0]
-            block_result = block_result.reshape((actual_block_size, length/actual_block_size))
-            outside_projections[block_start:block_end] = block_result
-
-        projections[~inside_hull] = outside_projections
+            return result.x
+        
+        # Parallel processing of projections
+        outside_projections = Parallel(n_jobs=n_jobs)(
+            delayed(project_single_point)(point, vertex) 
+            for point, vertex in zip(outside_points, nearest_vertices)
+        )
+        
+        projections = query_points.copy()
+        projections[~inside_hull] = np.array(outside_projections)
+        
         return projections
 
     
