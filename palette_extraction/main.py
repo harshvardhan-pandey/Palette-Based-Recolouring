@@ -3,6 +3,7 @@ import cv2
 import sys
 import time
 from scipy.optimize import minimize
+from scipy.spatial import Delaunay
 from structs import *
 
 
@@ -57,7 +58,9 @@ def compute_center_points_unique(
 
 def compute_outside_points(mesh: Mesh, points):
     triangles = mesh.construct_triangles()
-    is_inside = mesh.is_inside_batch(triangles, points)
+    # is_inside = mesh.is_inside_batch(triangles, points)
+    delaunay_tri = Delaunay(mesh.vertices)
+    is_inside = delaunay_tri.find_simplex(points) >= 0
     inside_points = np.array([points[i] for i in range(len(points)) if is_inside[i]])
     outside_points = np.array(
         [points[i] for i in range(len(points)) if not is_inside[i]]
@@ -300,13 +303,20 @@ if __name__ == "__main__":
             refined_palette.vertices[data.index] = (1 - res.x) * data.center_point[
                 data.index
             ] + res.x * data.mesh.vertices[data.index]
-            
+
     t_end = time.time()
     print("time taken: ", t_end - t_start)
 
     refined_palette.save_to_file("./refined_palette.obj")
-    
-    final_res = compute_loss_function(refined_palette, points, lambda_fac, num_nearest_neighbours, center_point_option, unique)
+
+    final_res = compute_loss_function(
+        refined_palette,
+        points,
+        lambda_fac,
+        num_nearest_neighbours,
+        center_point_option,
+        unique,
+    )
     print("total loss: ", final_res.total_error)
     print("lambda: ", final_res.lambda_fac)
     print("reconstruct loss: ", final_res.reconstruct_error)
