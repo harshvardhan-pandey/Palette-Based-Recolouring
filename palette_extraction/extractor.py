@@ -1,3 +1,4 @@
+import argparse
 import numpy as np
 from scipy.spatial import ConvexHull
 from scipy.optimize import *
@@ -283,19 +284,21 @@ def get_simplified_hull_vertices_faces(image, E_vertice_num = 4, N = 500, normal
     return get_hull_vertices_faces(get_simplified_hull(image, E_vertice_num, N), normalized)
 
 if __name__=="__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--img", help="path to input image")
+    parser.add_argument("--out", help="path to output folder")
+    opt = parser.parse_args()
 
-    input_image_path=sys.argv[1]
-    output_rawhull_obj_file = sys.argv[2]
-    E_vertice_num=4
-    images=np.asarray(Image.open(input_image_path).convert('RGB'), dtype=np.float64)
+    input_image_path = opt.img
+    output_folder = opt.out
+    E_vertice_num = 4
+    images = np.asarray(Image.open(input_image_path).convert('RGB'), dtype=np.float64)
 
     from time import process_time as clock
     
-    start_time=clock()
-    hull=get_simplified_hull(images, E_vertice_num=6)
-    end_time=clock()
+    start_time = clock()
+    hull = get_simplified_hull(images, E_vertice_num=6)
+    end_time = clock()
 
-    write_convexhull_into_obj_file(hull, output_rawhull_obj_file)
+    write_convexhull_into_obj_file(hull, output_folder + "original_palette.obj")
     print( 'time: ', end_time-start_time )
-
-

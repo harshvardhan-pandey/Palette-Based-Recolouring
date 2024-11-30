@@ -1,14 +1,18 @@
+import argparse
 import numpy as np
 from projection import Projector
+from PIL import Image
+import os
+import time
 
 class MVC:
 
-    def __init__(self, pallete_points):
-        self.pallete_points = pallete_points.copy()
-        self.f_values = np.eye(pallete_points.shape[0], dtype=np.float64)
-        self.projector = Projector(self.pallete_points)
+    def __init__(self, palette_points):
+        self.palette_points = palette_points.copy()
+        self.f_values = np.eye(palette_points.shape[0], dtype=np.float64)
+        self.projector = Projector(self.palette_points)
         self.triangles = self.projector.hull.simplices
-        self.vertices = self.pallete_points[self.projector.hull.vertices]
+        self.vertices = self.palette_points[self.projector.hull.vertices]
 
     @staticmethod
     def safe_arcsin(val):
@@ -190,39 +194,66 @@ class MVC:
         results[not_done] = totalF[not_done] / totalW[not_done, np.newaxis]
         return results
     
-def get_mvc_of_pixels(image, pallete):
+def load_from_file(filename: str):
+    if not os.path.exists(filename):
+        print("Loading palette failed")
+        return False
+    
+    with open(filename, "r") as infile:
+        lines = infile.readlines()
+        
+    lines = [line.split() for line in lines]
+    points = np.array((0, 3), dtype=np.float32)
+    points = np.empty((0, 3), dtype=np.float32)
+    for l in lines:
+        if l[0] == "v":
+            points = np.vstack([points, np.array(l[1:]).astype(float)])
+    return points
+
+def show_palette(palette, opt, width = 100, height = 100):
+    N, _ = palette.shape
+    image = np.zeros((height, N*width, 3))
+    for i in range(N):
+        colour = palette[i]
+        image[:, i*width:(i+1)*width] = colour
+    
+    palette_img = Image.fromarray((image * 255).astype(np.uint8), mode="RGB")
+    palette_img.save(opt.out + "cur_palette.png")
+
+    
+def get_mvc_of_pixels(image, palette):
     N, M, _ = image.shape
     query = image.reshape((N*M, 3))
-    mvc = MVC(pallete)
+    mvc = MVC(palette)
     coords = mvc.compute_fxs(query)
-    return coords.reshape((N, M, pallete.shape[0]))
+    return coords.reshape((N, M, palette.shape[0]))
 
-def construct_image_from_mvc(mvc_coords, pallete):
-    return np.einsum('mnl,lp->mnp', mvc_coords, pallete)
+def construct_image_from_mvc(mvc_coords, palette):
+    return np.einsum('mnl,lp->mnp', mvc_coords, palette)
 
-if __name__ == "__main__":
+if __name__ == "__main__":    
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--img", help="path to image")
+    parser.add_argument("--pal", help="path to palette")
+    parser.add_argument("--out", help="path to output folder")
+    opt = parser.parse_args()
     
-    import time
-
-    hull_vertices = np.array([
-        [0.19761568, 0.2779199,  0.30872461],
-        [0.35672523, 0.99113141, 0.50231554],
-        [0.33906182, 0.57454616, 0.88112569],
-        [0.89005058, 0.6739143,  0.36623488],
-        [0.31112575, 0.6286831,  0.35056347],
-        [0.82094264, 0.39706136, 0.48109977],
-        [0.2894192,  0.00547371, 0.68187885],
-        [0.77351632, 0.63527035, 0.14662607],
-        [0.92219756, 0.4549181,  0.11490841],
-        [0.03631562, 0.09841079, 0.63888051]
-    ])
-    mvc = MVC(hull_vertices)
-
-    query_points = np.random.rand(1000000, 3)
-
-    start_time2 = time.time()
-    result2 = mvc.compute_fxs(query_points)
-    end_time2 = time.time()
-
-    print(end_time2 - start_time2)
-
+    img = np.array(Image.open(opt.img)) / 255
+    palette = load_from_file(opt.pal)
+    
+    weights = get_mvc_of_pixels(img, palette)
+    
+    while True:
+        show_palette(palette, opt)
+        inp = input("Do you wish to change the palette? [y/n]")
+        if inp == "n":
+            break
+        idx = int(input("Enter index of color to change (0-indexing)"))
+        r = int(input("Enter red value for new color (0 - 255)")) / 255
+        g = int(input("Enter green value for new color (0 - 255)")) / 255
+        b = int(input("Enter blue value for new color (0 - 255)")) / 255
+        palette[idx] = np.array([r, g, b])
+    
+    new_img = construct_image_from_mvc(weights, palette)
+    new_img = Image.fromarray((new_img * 255).astype(np.uint8), mode="RGB")
+    new_img.save(opt.out + "new_albedo.png")

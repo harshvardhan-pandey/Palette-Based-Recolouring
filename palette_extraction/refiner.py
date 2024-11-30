@@ -192,8 +192,9 @@ def cost_function(x, data: Data) -> float:
 if __name__ == "__main__":
     # parameters
     parser = argparse.ArgumentParser()
-    parser.add_argument("--pic", help="original picture")
+    parser.add_argument("--img", help="original picture")
     parser.add_argument("--obj", help=".obj file for initial convex hull")
+    parser.add_argument("--out", help="path to output folder")
     parser.add_argument("--sample", help="number of samples", default=200)
     parser.add_argument("--option", help="center point selection method", default=1)
     parser.add_argument(
@@ -211,7 +212,7 @@ if __name__ == "__main__":
     iterations = int(opt.iter)
     unique = int(opt.unique)
 
-    print(f"image: {opt.pic}")
+    print(f"image: {opt.img}")
     print(f"original palette: {opt.obj}")
 
     # initial palette - the original convex hull
@@ -221,9 +222,9 @@ if __name__ == "__main__":
         sys.exit(0)
 
     # image
-    img = cv2.imread(opt.pic)
+    img = cv2.imread(opt.img)
     if len(img) == 0 or len(img[0]) == 0:
-        print(f"Load from {opt.pic} failed\n")
+        print(f"Load from {opt.img} failed\n")
         sys.exit(0)
 
     points = []
@@ -307,7 +308,7 @@ if __name__ == "__main__":
     t_end = time.time()
     print("time taken: ", t_end - t_start)
 
-    refined_palette.save_to_file("./refined_palette.obj")
+    refined_palette.save_to_file(opt.out + "refined_palette.obj")
 
     final_res = compute_loss_function(
         refined_palette,

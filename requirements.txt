@@ -15,6 +15,7 @@ idna==3.10
 imageio==2.36.1
 intrinsic @ file:///home/devika/personal/Palette-Based-Recolouring/intrinsic_shading/Intrinsic
 Jinja2==3.1.4
+joblib==1.4.2
 kiwisolver==1.4.7
 kornia==0.7.4
 kornia_rs==0.1.7

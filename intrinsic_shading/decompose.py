@@ -23,12 +23,14 @@ model = load_models("paper_weights", device=device)
 img = load_image(opt.img)
 result = run_gray_pipeline(model, img, resize_conf=None, maintain_size=True, device=device)
 
-img = result["image"]
+img = (result["image"] * 255).astype(np.uint8)
 alb = (result["gry_alb"] * 255).astype(np.uint8)
 shd = (uninvert(result["gry_shd"])[:, :, None] * 255).astype(np.uint8).squeeze()
 
+img_img = Image.fromarray(img, mode="RGB")
 alb_img = Image.fromarray(alb, mode="RGB")
 shd_img = Image.fromarray(shd, mode="L")
 
+img_img.save(opt.out + "original.png")
 alb_img.save(opt.out + "albedo.png")
 shd_img.save(opt.out + "shading.png")
