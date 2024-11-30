@@ -27,6 +27,7 @@ class Projector:
                 lambda x, y=query_point: np.sum((x - y)**2),
                 x0=self.points[nearest_idx],
                 constraints=self.constraints,
+                tol=10**(-9),
                 method="SLSQP"
             )
         
@@ -65,7 +66,8 @@ class Projector:
             result = minimize(
                 lambda x: np.sum((x - point)**2),
                 x0=vertex,
-                constraints=self.constraints,  # Add your specific constraints
+                constraints=self.constraints,
+                tol = 10**(-9),
                 method='SLSQP'
             )
             return result.x

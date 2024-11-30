@@ -5,7 +5,7 @@ class MVC:
 
     def __init__(self, pallete_points):
         self.pallete_points = pallete_points.copy()
-        self.f_values = np.eye(pallete_points.shape[0], dtype=np.float32)
+        self.f_values = np.eye(pallete_points.shape[0], dtype=np.float64)
         self.projector = Projector(self.pallete_points)
         self.triangles = self.projector.hull.simplices
         self.vertices = self.pallete_points[self.projector.hull.vertices]
