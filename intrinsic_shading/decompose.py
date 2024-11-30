@@ -25,7 +25,7 @@ result = run_gray_pipeline(model, img, resize_conf=None, maintain_size=True, dev
 
 img = (result["image"] * 255).astype(np.uint8)
 alb = (result["gry_alb"] * 255).astype(np.uint8)
-shd = (uninvert(result["gry_shd"])[:, :, None] * 255).astype(np.uint8).squeeze()
+shd = (np.clip(uninvert(result["gry_shd"])[:, :], 0, 1) * 255).astype(np.uint8)
 
 img_img = Image.fromarray(img, mode="RGB")
 alb_img = Image.fromarray(alb, mode="RGB")
