@@ -287,17 +287,18 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--img", help="path to input image")
     parser.add_argument("--out", help="path to output folder")
+    parser.add_argument("--n_col", help="number of colours in palette", default=4)
     opt = parser.parse_args()
 
     input_image_path = opt.img
     output_folder = opt.out
-    E_vertice_num = 4
+    E_vertice_num = int(opt.n_col)
     images = np.asarray(Image.open(input_image_path).convert('RGB'), dtype=np.float64)
 
     from time import process_time as clock
     
     start_time = clock()
-    hull = get_simplified_hull(images, E_vertice_num=6)
+    hull = get_simplified_hull(images, E_vertice_num=E_vertice_num)
     end_time = clock()
 
     write_convexhull_into_obj_file(hull, output_folder + "original_palette.obj")

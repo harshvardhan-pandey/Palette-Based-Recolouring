@@ -248,10 +248,10 @@ if __name__ == "__main__":
         inp = input("Do you wish to change the palette? [y/n]")
         if inp == "n":
             break
-        idx = int(input("Enter index of color to change (0-indexing)"))
-        r = int(input("Enter red value for new color (0 - 255)")) / 255
-        g = int(input("Enter green value for new color (0 - 255)")) / 255
-        b = int(input("Enter blue value for new color (0 - 255)")) / 255
+        idx = int(input("Enter index of color to change (0-indexing) "))
+        r = int(input("Enter red value for new color (0 - 255) ")) / 255
+        g = int(input("Enter green value for new color (0 - 255) ")) / 255
+        b = int(input("Enter blue value for new color (0 - 255) ")) / 255
         palette[idx] = np.array([r, g, b])
     
     new_img = construct_image_from_mvc(weights, palette)
