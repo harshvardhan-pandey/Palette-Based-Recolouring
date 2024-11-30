@@ -3,7 +3,7 @@ from scipy.spatial import ConvexHull, KDTree, Delaunay
 from scipy.optimize import minimize
 from joblib import Parallel, delayed
 
-class ProjectionHandler:
+class Projector:
     
     def __init__(self, points):
 
@@ -85,7 +85,7 @@ class ProjectionHandler:
 if __name__ == "__main__":
     
     points = np.array([[0, 0, 0], [0, 0, 1], [0, 1, 0], [1, 0, 0]]) 
-    ds = ProjectionHandler(points)
+    ds = Projector(points)
     print(ds.hull)
     print(ds.tri.find_simplex([-1, -1, -1]))
     
